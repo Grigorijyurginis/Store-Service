@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import Base, engine
 from app.models import orm as _orm_models  # noqa: F401 — registers ORM classes with Base.metadata
 from app.routers import health, orders, products
+from app.metrics import instrumentator
 
 
 @asynccontextmanager
@@ -26,6 +27,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+instrumentator.instrument(app).expose(app, include_in_schema=True)
 
 app.include_router(health.router)
 app.include_router(products.router)

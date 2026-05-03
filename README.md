@@ -107,20 +107,54 @@ ORM-модели (`app/models/orm.py`) и Pydantic-схемы существую
 
 ## Запуск
 
+### Локально (только FastAPI)
+
 ```bash
 # 1. Установить зависимости
 uv sync
 
-# 2. Запустить (БД создаётся автоматически при старте)
+# 2. Скопировать файл переменных окружения и заполнить значения
+cp .env.example .env
+
+# 3. Запустить (БД создаётся автоматически при старте)
 uv run uvicorn app.main:app --reload
 
 # Документация: http://localhost:8000/docs
 ```
 
-## Скриншоты
+### Docker Compose (FastAPI + Prometheus + Grafana)
+
+```bash
+# 1. Скопировать файл переменных окружения и заполнить значения
+cp .env.example .env
+
+# 2. Собрать и запустить весь стек
+docker compose up --build
+
+# Остановить стек
+docker compose down
+```
+
+| Сервис | URL |
+|---|---|
+| FastAPI docs | http://localhost:8000/docs |
+| Метрики (raw) | http://localhost:8000/metrics |
+| Prometheus UI | http://localhost:9090 |
+| Grafana | http://localhost:3000 |
+
+---
+
+## Лабораторная 2 — Создание сервиса
 
 ![Swagger UI](img/swagger.png)
 
 ![Health check](img/health_check.png)
 
 ![Созданные продукты](img/created_products.png)
+
+---
+
+## Лабораторная 3 — Метрики и Дашборд
+
+![Дашборды Grafana](img/dashboards.png)
+![Запрос в TSBD](img/prom_ql.png)

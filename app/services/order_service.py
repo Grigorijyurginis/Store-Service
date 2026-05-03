@@ -3,6 +3,7 @@ from app.models.orm import Order as OrderORM
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.generated import Order, OrderCreate, OrderItem, OrderListResponse, OrderStatus, OrderStatusUpdate
+from app.metrics import insufficient_stock_total, orders_created_total
 
 # Allowed status transitions — terminal states map to empty sets
 _TRANSITIONS: dict[str, frozenset[str]] = {
@@ -51,6 +52,7 @@ class OrderService:
             if product is None:
                 raise NotFoundError("Product", item.product_id)
             if product.stock_quantity < item.quantity:
+                insufficient_stock_total.labels(product_id=str(item.product_id)).inc()
                 raise InsufficientStockError(item.product_id, item.quantity, product.stock_quantity)
             product.stock_quantity -= item.quantity
             resolved_items.append(
@@ -62,6 +64,8 @@ class OrderService:
             notes=data.notes,
             resolved_items=resolved_items,
         )
+        orders_created_total.labels(initial_status="pending").inc()
+
         return self._to_schema(order)
 
     async def update_order_status(self, order_id: int, data: OrderStatusUpdate) -> Order:
