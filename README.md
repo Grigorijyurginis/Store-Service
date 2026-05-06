@@ -159,7 +159,7 @@ docker compose down
 ![Дашборды Grafana](img/dashboards.png)
 ![Запрос в TSBD](img/prom_ql.png)
 
-## Лабораторная 3 — Журналирование
+## Лабораторная 4 — Журналирование
 
 ![Логи в Grafana](img/logging.png)
 ![Запрос в loki](img/count_orders_query.png)
