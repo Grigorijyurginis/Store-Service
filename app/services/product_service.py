@@ -1,7 +1,11 @@
+import logging
+
 from app.exceptions import ConflictError, NotFoundError
 from app.models.orm import Product as ProductORM
 from app.repositories.product_repo import ProductRepository
 from app.schemas.generated import Product, ProductCreate, ProductListResponse, ProductUpdate
+
+_log = logging.getLogger("store.products")
 
 
 class ProductService:
@@ -44,6 +48,16 @@ class ProductService:
             if await self.repo.get_by_sku(data.sku) is not None:
                 raise ConflictError(f"Product with SKU '{data.sku}' already exists")
         product = await self.repo.create(data)
+        _log.info(
+            "product_created",
+            extra={
+                "event": "product_created",
+                "product_id": product.id,
+                "sku": product.sku,
+                "category": product.category,
+                "price": float(product.price),
+            },
+        )
         return self._to_schema(product)
 
     async def update_product(self, product_id: int, data: ProductUpdate) -> Product:
@@ -65,6 +79,7 @@ class ProductService:
             raise ConflictError(
                 f"Product {product_id} is referenced by {count} order item(s) and cannot be deleted"
             )
+        _log.info("product_deleted", extra={"event": "product_deleted", "product_id": product_id})
         await self.repo.delete(product)
 
     @staticmethod

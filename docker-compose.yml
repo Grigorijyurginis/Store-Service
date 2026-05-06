@@ -5,6 +5,8 @@ services:
       - "8000:8000"
     volumes:
       - ./store.db:/app/store.db
+    labels:
+      - "logging=promtail"
 
   prometheus:
     image: prom/prometheus:v2.51.0
@@ -14,6 +16,24 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
       - app
+
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
 
   grafana:
     image: grafana/grafana:10.4.2
@@ -27,6 +47,8 @@ services:
       - ./monitoring/Store Service Dashboard.json:/etc/grafana/dashboards/store_service_dashboard.json
     depends_on:
       - prometheus
+      - loki
 
 volumes:
   grafana_data:
+  loki_data:

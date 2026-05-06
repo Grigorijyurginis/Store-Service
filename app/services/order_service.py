@@ -1,9 +1,13 @@
+import logging
+
 from app.exceptions import ConflictError, InsufficientStockError, InvalidStatusTransitionError, NotFoundError
 from app.models.orm import Order as OrderORM
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.generated import Order, OrderCreate, OrderItem, OrderListResponse, OrderStatus, OrderStatusUpdate
 from app.metrics import insufficient_stock_total, orders_created_total
+
+_log = logging.getLogger("store.orders")
 
 # Allowed status transitions — terminal states map to empty sets
 _TRANSITIONS: dict[str, frozenset[str]] = {
@@ -53,6 +57,15 @@ class OrderService:
                 raise NotFoundError("Product", item.product_id)
             if product.stock_quantity < item.quantity:
                 insufficient_stock_total.labels(product_id=str(item.product_id)).inc()
+                _log.warning(
+                    "insufficient_stock",
+                    extra={
+                        "event": "insufficient_stock",
+                        "product_id": item.product_id,
+                        "requested": item.quantity,
+                        "available": product.stock_quantity,
+                    },
+                )
                 raise InsufficientStockError(item.product_id, item.quantity, product.stock_quantity)
             product.stock_quantity -= item.quantity
             resolved_items.append(
@@ -65,6 +78,16 @@ class OrderService:
             resolved_items=resolved_items,
         )
         orders_created_total.labels(initial_status="pending").inc()
+        _log.info(
+            "order_created",
+            extra={
+                "event": "order_created",
+                "order_id": order.id,
+                "customer_id": order.customer_id,
+                "total_amount": float(order.total_amount),
+                "items_count": len(order.items),
+            },
+        )
 
         return self._to_schema(order)
 
@@ -81,6 +104,15 @@ class OrderService:
             await self._restore_stock(order)
 
         updated = await self.order_repo.set_status(order, target)
+        _log.info(
+            "order_status_changed",
+            extra={
+                "event": "order_status_changed",
+                "order_id": order_id,
+                "from_status": order.status,
+                "to_status": target,
+            },
+        )
         return self._to_schema(updated)
 
     async def cancel_order(self, order_id: int) -> Order:
