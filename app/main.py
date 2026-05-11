@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.config import settings
 from app.database import Base, engine
@@ -12,8 +13,10 @@ from app.logging_config import setup_logging
 from app.models import orm as _orm_models  # noqa: F401 — registers ORM classes with Base.metadata
 from app.routers import health, orders, products
 from app.metrics import instrumentator
+from app.tracing import setup_tracing
 
 setup_logging()
+setup_tracing()
 logger = logging.getLogger("store.http")
 _startup_log = logging.getLogger("store")
 
@@ -37,6 +40,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 instrumentator.instrument(app).expose(app, include_in_schema=True)
+FastAPIInstrumentor.instrument_app(app)
 
 
 @app.middleware("http")

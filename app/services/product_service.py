@@ -1,9 +1,12 @@
 import logging
 
+from opentelemetry.trace import StatusCode
+
 from app.exceptions import ConflictError, NotFoundError
 from app.models.orm import Product as ProductORM
 from app.repositories.product_repo import ProductRepository
 from app.schemas.generated import Product, ProductCreate, ProductListResponse, ProductUpdate
+from app.tracing import tracer
 
 _log = logging.getLogger("store.products")
 
@@ -44,21 +47,27 @@ class ProductService:
         return self._to_schema(product)
 
     async def create_product(self, data: ProductCreate) -> Product:
-        if data.sku is not None:
-            if await self.repo.get_by_sku(data.sku) is not None:
-                raise ConflictError(f"Product with SKU '{data.sku}' already exists")
-        product = await self.repo.create(data)
-        _log.info(
-            "product_created",
-            extra={
-                "event": "product_created",
-                "product_id": product.id,
-                "sku": product.sku,
-                "category": product.category,
-                "price": float(product.price),
-            },
-        )
-        return self._to_schema(product)
+        with tracer.start_as_current_span("product.create") as span:
+            span.set_attribute("sku", data.sku or "")
+            span.set_attribute("category", data.category or "")
+
+            if data.sku is not None:
+                if await self.repo.get_by_sku(data.sku) is not None:
+                    span.set_status(StatusCode.ERROR, "sku_conflict")
+                    raise ConflictError(f"Product with SKU '{data.sku}' already exists")
+            product = await self.repo.create(data)
+            span.set_attribute("product_id", product.id)
+            _log.info(
+                "product_created",
+                extra={
+                    "event": "product_created",
+                    "product_id": product.id,
+                    "sku": product.sku,
+                    "category": product.category,
+                    "price": float(product.price),
+                },
+            )
+            return self._to_schema(product)
 
     async def update_product(self, product_id: int, data: ProductUpdate) -> Product:
         product = await self.repo.get_by_id(product_id)
@@ -71,16 +80,21 @@ class ProductService:
         return self._to_schema(updated)
 
     async def delete_product(self, product_id: int) -> None:
-        product = await self.repo.get_by_id(product_id)
-        if product is None:
-            raise NotFoundError("Product", product_id)
-        count = await self.repo.count_order_items(product_id)
-        if count > 0:
-            raise ConflictError(
-                f"Product {product_id} is referenced by {count} order item(s) and cannot be deleted"
-            )
-        _log.info("product_deleted", extra={"event": "product_deleted", "product_id": product_id})
-        await self.repo.delete(product)
+        with tracer.start_as_current_span("product.delete") as span:
+            span.set_attribute("product_id", product_id)
+
+            product = await self.repo.get_by_id(product_id)
+            if product is None:
+                span.set_status(StatusCode.ERROR, "product_not_found")
+                raise NotFoundError("Product", product_id)
+            count = await self.repo.count_order_items(product_id)
+            if count > 0:
+                span.set_status(StatusCode.ERROR, "has_order_items")
+                raise ConflictError(
+                    f"Product {product_id} is referenced by {count} order item(s) and cannot be deleted"
+                )
+            _log.info("product_deleted", extra={"event": "product_deleted", "product_id": product_id})
+            await self.repo.delete(product)
 
     @staticmethod
     def _to_schema(orm: ProductORM) -> Product:

@@ -163,3 +163,8 @@ docker compose down
 
 ![Логи в Grafana](img/logging.png)
 ![Запрос в loki](img/count_orders_query.png)
+
+## Лабораторная 5 — Распределенная трасировка
+
+![Дашборд в Grafana](img/traces_dashboard.png)
+![Запрос для трейсов с ошибкой](img/error_traces.png)

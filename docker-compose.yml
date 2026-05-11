@@ -5,8 +5,12 @@ services:
       - "8000:8000"
     volumes:
       - ./store.db:/app/store.db
+    env_file:
+      - .env
     labels:
       - "logging=promtail"
+    depends_on:
+      - tempo
 
   prometheus:
     image: prom/prometheus:v2.51.0
@@ -35,6 +39,16 @@ services:
     depends_on:
       - loki
 
+  tempo:
+    image: grafana/tempo:2.4.1
+    ports:
+      - "4318:4318"
+      - "3200:3200"
+    volumes:
+      - ./monitoring/tempo.yml:/etc/tempo.yaml
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo.yaml
+
   grafana:
     image: grafana/grafana:10.4.2
     ports:
@@ -48,7 +62,9 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
 
 volumes:
   grafana_data:
   loki_data:
+  tempo_data:
