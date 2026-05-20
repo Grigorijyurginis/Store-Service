@@ -168,3 +168,8 @@ docker compose down
 
 ![Дашборд в Grafana](img/traces_dashboard.png)
 ![Запрос для трейсов с ошибкой](img/error_traces.png)
+
+## Лабораторная 6 — CI/CD
+
+![CI](img/github_actions.png)
+![CD](img/docker_hub.png)
