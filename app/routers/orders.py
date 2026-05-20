@@ -38,7 +38,7 @@ async def create_order(data: OrderCreate, svc: OrderService = Depends(_svc)) -> 
     try:
         return await svc.create_order(data)
     except NotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)})
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)}) from exc
     except InsufficientStockError as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -47,7 +47,7 @@ async def create_order(data: OrderCreate, svc: OrderService = Depends(_svc)) -> 
                 "message": str(exc),
                 "details": {"product_id": exc.product_id, "requested": exc.requested, "available": exc.available},
             },
-        )
+        ) from exc
 
 
 @router.get("/{order_id}", response_model=Order)
@@ -55,22 +55,20 @@ async def get_order(order_id: int, svc: OrderService = Depends(_svc)) -> Order:
     try:
         return await svc.get_order(order_id)
     except NotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)})
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)}) from exc
 
 
 @router.patch("/{order_id}/status", response_model=Order)
-async def update_order_status(
-    order_id: int, data: OrderStatusUpdate, svc: OrderService = Depends(_svc)
-) -> Order:
+async def update_order_status(order_id: int, data: OrderStatusUpdate, svc: OrderService = Depends(_svc)) -> Order:
     try:
         return await svc.update_order_status(order_id, data)
     except NotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)})
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)}) from exc
     except (InvalidStatusTransitionError, ConflictError) as exc:
         detail = {"error": "invalid_transition", "message": str(exc)}
         if isinstance(exc, InvalidStatusTransitionError):
             detail["details"] = {"current": exc.current, "target": exc.target}
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=detail)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=detail) from exc
 
 
 @router.delete("/{order_id}", response_model=Order)
@@ -78,9 +76,13 @@ async def cancel_order(order_id: int, svc: OrderService = Depends(_svc)) -> Orde
     try:
         return await svc.cancel_order(order_id)
     except NotFoundError as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)})
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail={"error": "not_found", "message": str(exc)}) from exc
     except InvalidStatusTransitionError as exc:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail={"error": "invalid_transition", "message": str(exc), "details": {"current": exc.current, "target": exc.target}},
-        )
+            detail={
+                "error": "invalid_transition",
+                "message": str(exc),
+                "details": {"current": exc.current, "target": exc.target},
+            },
+        ) from exc

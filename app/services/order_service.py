@@ -2,24 +2,24 @@ import logging
 
 from opentelemetry.trace import StatusCode
 
-from app.exceptions import ConflictError, InsufficientStockError, InvalidStatusTransitionError, NotFoundError
+from app.exceptions import InsufficientStockError, InvalidStatusTransitionError, NotFoundError
+from app.metrics import insufficient_stock_total, orders_created_total
 from app.models.orm import Order as OrderORM
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.schemas.generated import Order, OrderCreate, OrderItem, OrderListResponse, OrderStatus, OrderStatusUpdate
-from app.metrics import insufficient_stock_total, orders_created_total
 from app.tracing import tracer
 
 _log = logging.getLogger("store.orders")
 
 # Allowed status transitions — terminal states map to empty sets
 _TRANSITIONS: dict[str, frozenset[str]] = {
-    "pending":    frozenset({"confirmed", "cancelled"}),
-    "confirmed":  frozenset({"processing", "cancelled"}),
+    "pending": frozenset({"confirmed", "cancelled"}),
+    "confirmed": frozenset({"processing", "cancelled"}),
     "processing": frozenset({"shipped", "cancelled"}),
-    "shipped":    frozenset({"delivered"}),
-    "delivered":  frozenset(),
-    "cancelled":  frozenset(),
+    "shipped": frozenset({"delivered"}),
+    "delivered": frozenset(),
+    "cancelled": frozenset(),
 }
 
 
@@ -36,9 +36,7 @@ class OrderService:
         limit: int = 20,
         offset: int = 0,
     ) -> OrderListResponse:
-        items, total = await self.order_repo.list(
-            status=status, customer_id=customer_id, limit=limit, offset=offset
-        )
+        items, total = await self.order_repo.list(status=status, customer_id=customer_id, limit=limit, offset=offset)
         return OrderListResponse(
             items=[self._to_schema(o) for o in items],
             total=total,

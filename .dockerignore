@@ -1,0 +1,29 @@
+# Version control
+.git/
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[oc]
+.venv/
+
+# Tests & coverage
+tests/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Dev & editor
+.idea/
+.env
+
+# Runtime data
+*.db
+*.log
+
+# Docker itself
+Dockerfile
+.dockerignore
+docker-compose.yml
+monitoring/

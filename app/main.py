@@ -10,9 +10,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from app.config import settings
 from app.database import Base, engine
 from app.logging_config import setup_logging
+from app.metrics import instrumentator
 from app.models import orm as _orm_models  # noqa: F401 — registers ORM classes with Base.metadata
 from app.routers import health, orders, products
-from app.metrics import instrumentator
 from app.tracing import setup_tracing
 
 setup_logging()
@@ -77,6 +77,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         status_code=500,
         content={"error": "internal_error", "message": "An unexpected error occurred"},
     )
+
 
 @app.get("/debug/error")
 async def debug_error():

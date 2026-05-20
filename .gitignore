@@ -13,3 +13,9 @@ wheels/
 
 # SQLite database
 *.db
+
+# Test & coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

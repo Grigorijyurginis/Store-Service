@@ -13,9 +13,7 @@ class OrderRepository:
 
     async def get_by_id(self, order_id: int) -> Order | None:
         result = await self.db.execute(
-            select(Order)
-            .options(selectinload(Order.items).selectinload(OrderItem.product))
-            .where(Order.id == order_id)
+            select(Order).options(selectinload(Order.items).selectinload(OrderItem.product)).where(Order.id == order_id)
         )
         return result.scalar_one_or_none()
 
